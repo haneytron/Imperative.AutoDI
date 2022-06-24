@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "DZHyq/8sL4GEb1C5q0/X0808L7K8bAdwfCkaWx8RxUcOY06Zr/Idy1kfLSURukKY5eSHn7Dz2sHL/lTHzlRdDw==",
+  "success": true,
+  "projectFilePath": "D:\\code\\Imperative.AutoDI\\Imperative.AutoDI\\Imperative.AutoDI.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Dave\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\6.0.0\\microsoft.extensions.dependencyinjection.6.0.0.nupkg.sha512",
+    "C:\\Users\\Dave\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\6.0.0\\microsoft.extensions.dependencyinjection.abstractions.6.0.0.nupkg.sha512",
+    "C:\\Users\\Dave\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

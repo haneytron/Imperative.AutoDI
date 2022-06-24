@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Imperative.AutoDI</id>
+    <version>1.1.0</version>
+    <authors>David Haney</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <description>Automatically add dependencies to your `IServiceCollection` by namespace. Matches on convention of classes where the class name ends with the interface name minus the leading `I`. Example: `InMemoryCacheManager` and `CacheManager` will match `ICacheManager`.</description>
+    <tags>dependency injection di auto autodi</tags>
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="Microsoft.Extensions.DependencyInjection" version="6.0.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="D:\code\Imperative.AutoDI\Imperative.AutoDI\bin\Release\net6.0\Imperative.AutoDI.dll" target="lib\net6.0\Imperative.AutoDI.dll" />
+  </files>
+</package>
