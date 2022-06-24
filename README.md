@@ -1,7 +1,7 @@
 Install:
 
-`Install-Package Imperative.AutoDI`
-`nuget install Imperative.AutoDI`
+- `PM> Install-Package Imperative.AutoDI`
+- `nuget install Imperative.AutoDI`
 
 Automatically add dependencies to your `IServiceCollection` by namespace. Matches on convention of classes where the class name ends with the interface name minus the leading `I`. Namespaces specified will include all child namespaces (any namespaces which start with the specified namespace string).
 
