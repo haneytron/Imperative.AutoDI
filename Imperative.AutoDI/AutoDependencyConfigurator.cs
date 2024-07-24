@@ -11,10 +11,9 @@ namespace Imperative.AutoDI
         private readonly ILogger<AutoDependencyConfigurator> _logger;
         private readonly Dictionary<string, List<Type>> _typesByNamespace;
 
-        public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory)
+        public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null)
         {
             ArgumentNullException.ThrowIfNull(serviceCollection);
-            ArgumentNullException.ThrowIfNull(loggerFactory);
 
             _serviceCollection = serviceCollection;
 
