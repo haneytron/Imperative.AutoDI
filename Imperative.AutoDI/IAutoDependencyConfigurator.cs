@@ -10,7 +10,7 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple singleton services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace.</param>
+        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace. Namespaces which end with a trailing wildcard character '*' will map all child namespaces.</param>
         /// <seealso cref="ServiceLifetime.Singleton"/>
         IAutoDependencyConfigurator AddSingletons(params string[] namespaces);
         /// <summary>
@@ -23,7 +23,7 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple scoped services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace.</param>
+        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace. Namespaces which end with a trailing wildcard character '*' will map all child namespaces.</param>
         /// <seealso cref="ServiceLifetime.Scoped"/>
         IAutoDependencyConfigurator AddScopeds(params string[] namespaces);
         /// <summary>
@@ -36,7 +36,7 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple transient services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace.</param>
+        /// <param name="namespaces">The namespaces to search for service types and their implementations. To successfully discover and register a pair, they must both have the same namespace. Namespaces which end with a trailing wildcard character '*' will map all child namespaces.</param>
         /// <seealso cref="ServiceLifetime.Transient"/>
         IAutoDependencyConfigurator AddTransients(params string[] namespaces);
         /// <summary>

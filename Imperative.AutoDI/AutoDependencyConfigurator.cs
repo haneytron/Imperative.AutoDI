@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -7,11 +8,27 @@ namespace Imperative.AutoDI
     internal class AutoDependencyConfigurator : IAutoDependencyConfigurator
     {
         private readonly IServiceCollection _serviceCollection;
+        private readonly ILogger<AutoDependencyConfigurator> _logger;
         private readonly Dictionary<string, List<Type>> _typesByNamespace;
 
-        public AutoDependencyConfigurator(IServiceCollection serviceCollection)
+        public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory)
         {
-            _serviceCollection = serviceCollection ?? throw new ArgumentNullException(nameof(serviceCollection));
+            ArgumentNullException.ThrowIfNull(serviceCollection);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+
+            _serviceCollection = serviceCollection;
+
+            // Set up logging
+            if (loggerFactory == null)
+            {
+                loggerFactory = LoggerFactory.Create(builder =>
+                {
+                    builder.SetMinimumLevel(LogLevel.Debug);
+                    builder.AddConsole();
+                });
+            }
+
+            _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
 
             // Get all types and store them by namespace for fast access
             var timer = Stopwatch.StartNew();
@@ -51,13 +68,13 @@ namespace Imperative.AutoDI
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    Debug.WriteLine($"*** [AutoDI]: Init - error caught while caching types by namespace: {ex}");
+                    _logger.LogWarning("[AutoDI]: Init - error caught while caching types by namespace: {ex}", ex);
                 }
             }
 
             timer.Stop();
-            Debug.WriteLine($"*** [AutoDI]: Init - caching types by namespace done: {timer.ElapsedMilliseconds}ms");
-            Debug.WriteLine($"*** [AutoDI]: Init - total namespaces: {_typesByNamespace.Count}, total types: {typeCount}");
+            _logger.LogInformation("[AutoDI]: Init - cached types in {ellapsed}ms, total namespaces: {typesByNamespaceCount}, total types: {typeCount}", timer.ElapsedMilliseconds, _typesByNamespace.Count, typeCount);
+            Console.WriteLine();
         }
 
         public IAutoDependencyConfigurator AddSingletons(params string[] namespaces)
@@ -125,9 +142,21 @@ namespace Imperative.AutoDI
 
             foreach (var @namespace in namespaces)
             {
-                if (!_typesByNamespace.TryGetValue(@namespace, out var typesInNamespace))
+                List<Type> typesInNamespace;
+
+                // Handle wildcard namespaces which map all child namespaces
+                if (@namespace.EndsWith('*'))
                 {
-                    Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - no types found for namespace: {@namespace}");
+                    typesInNamespace = _typesByNamespace.Where(i => i.Key.StartsWith(@namespace.TrimEnd('*'))).SelectMany(i => i.Value).ToList();
+                    if (typesInNamespace.Count == 0)
+                    {
+                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                        continue;
+                    }
+                }
+                else if (!_typesByNamespace.TryGetValue(@namespace, out typesInNamespace))
+                {
+                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
                     continue;
                 }
 
@@ -136,12 +165,12 @@ namespace Imperative.AutoDI
 
                 if (serviceTypes.Count == 0)
                 {
-                    Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - no service types found for namespace: {@namespace}");
+                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
                     continue;
                 }
                 if (concreteTypes.Count == 0)
                 {
-                    Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - no concrete types found for namespace: {@namespace}");
+                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
                     continue;
                 }
 
@@ -159,31 +188,33 @@ namespace Imperative.AutoDI
 
                         // Register the type mapping
                         addMethod(serviceType, concreteType);
-                        Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}");
+
+                        _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, concreteType);
+                        
                         break;
                     }
                 }
             }
         }
 
-        private static void AddTypes(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
+        private void AddTypes(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
         {
             ArgumentNullException.ThrowIfNull(servicesTypesSelector);
             ArgumentNullException.ThrowIfNull(implementationTypesSelector);
             ArgumentNullException.ThrowIfNull(addMethod);
             if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or white space", nameof(methodNameForDebugLogging));
 
-            var serviceTypes = servicesTypesSelector().ToList();
-            var concreteTypes = implementationTypesSelector().ToList();
+            var serviceTypes = (servicesTypesSelector() ?? Enumerable.Empty<Type>()).ToList();
+            var concreteTypes = (implementationTypesSelector() ?? Enumerable.Empty<Type>()).ToList();
 
             if (serviceTypes.Count == 0)
             {
-                Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - no service types found for {nameof(servicesTypesSelector)}");
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found for {servicesTypesSelector}", methodNameForDebugLogging, nameof(servicesTypesSelector));
                 return;
             }
             if (concreteTypes.Count == 0)
             {
-                Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - no concrete types found for {nameof(implementationTypesSelector)}");
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found for {implementationTypesSelector}", methodNameForDebugLogging, nameof(implementationTypesSelector));
                 return;
             }
 
@@ -201,7 +232,9 @@ namespace Imperative.AutoDI
 
                     // Register the type mapping
                     addMethod(serviceType, concreteType);
-                    Debug.WriteLine($"*** [AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}");
+
+                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, concreteType);
+
                     break;
                 }
             }

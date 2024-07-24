@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Imperative.AutoDI
 {
@@ -12,11 +13,12 @@ namespace Imperative.AutoDI
         /// </summary>
         /// <param name="serviceCollection">The service collection.</param>
         /// <param name="config">The configuration method.</param>
-        public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config)
+        /// <param name="loggerFactory">Optional: the logger factory to use for logging. If none is provided, debug logging will be printed to the console.</param>
+        public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config, ILoggerFactory loggerFactory = null)
         {
             ArgumentNullException.ThrowIfNull(config);
 
-            var autoDependencyConfigurator = new AutoDependencyConfigurator(serviceCollection);
+            var autoDependencyConfigurator = new AutoDependencyConfigurator(serviceCollection, loggerFactory);
 
             config(autoDependencyConfigurator);
 

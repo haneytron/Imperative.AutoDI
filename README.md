@@ -22,7 +22,7 @@ builder.Host.ConfigureServices((context, services) =>
     services.AddAutoDependencyInjection(config =>
     {
         // Singletons
-        config.AddSingletons("My.Namespace.One", "My.Namespace.Two");
+        config.AddSingletons("My.Namespace.One", "My.Namespace.Two*");
         // Scoped
         config.AddScopeds("OtherNamespace");
         // Transient
