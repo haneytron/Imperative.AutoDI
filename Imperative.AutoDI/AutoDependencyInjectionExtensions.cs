@@ -13,7 +13,7 @@ namespace Imperative.AutoDI
         /// </summary>
         /// <param name="serviceCollection">The service collection.</param>
         /// <param name="config">The configuration method.</param>
-        /// <param name="loggerFactory">Optional: the logger factory to use for logging. If none is provided, debug logging will be printed to the console.</param>
+        /// <param name="loggerFactory">Optional: the logger factory to use for logging. If none is provided, nothing will be logged. Useful for debugging.</param>
         public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config, ILoggerFactory loggerFactory = null)
         {
             ArgumentNullException.ThrowIfNull(config);

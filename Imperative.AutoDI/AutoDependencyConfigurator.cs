@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -20,16 +21,14 @@ namespace Imperative.AutoDI
             // Set up logging
             if (loggerFactory == null)
             {
-                loggerFactory = LoggerFactory.Create(builder =>
-                {
-                    builder.SetMinimumLevel(LogLevel.Debug);
-                    builder.AddConsole();
-                });
+                _logger = NullLogger<AutoDependencyConfigurator>.Instance;
+            }
+            else
+            {
+                _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
             }
 
-            _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
-
-            // Get all types and store them by namespace for fast access
+            // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
             _typesByNamespace = [];
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -137,61 +136,72 @@ namespace Imperative.AutoDI
         {
             ArgumentNullException.ThrowIfNull(namespaces);
             ArgumentNullException.ThrowIfNull(addMethod);
-            if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or white space", nameof(methodNameForDebugLogging));
+            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
 
+            // HashSet to remove dupes
+            HashSet<Type> typesHashSet = new HashSet<Type>();
+
+            // Aggregate all types from all namespaces
             foreach (var @namespace in namespaces)
             {
                 List<Type> typesInNamespace;
-
                 // Handle wildcard namespaces which map all child namespaces
                 if (@namespace.EndsWith('*'))
                 {
                     typesInNamespace = _typesByNamespace.Where(i => i.Key.StartsWith(@namespace.TrimEnd('*'))).SelectMany(i => i.Value).ToList();
                     if (typesInNamespace.Count == 0)
                     {
-                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in namespace: {namespace}", methodNameForDebugLogging, @namespace);
                         continue;
                     }
                 }
                 else if (!_typesByNamespace.TryGetValue(@namespace, out typesInNamespace))
                 {
-                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in namespace: {namespace}", methodNameForDebugLogging, @namespace);
                     continue;
                 }
 
-                var serviceTypes = typesInNamespace.Where(i => i.IsInterface || i.IsAbstract).ToList();
-                var concreteTypes = typesInNamespace.Where(i => !i.IsInterface && !i.IsAbstract).ToList();
-
-                if (serviceTypes.Count == 0)
+                foreach (var typeInNamespace in typesInNamespace)
                 {
-                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
-                    continue;
+                    typesHashSet.Add(typeInNamespace);
                 }
-                if (concreteTypes.Count == 0)
-                {
-                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found for namespace: {namespace}", methodNameForDebugLogging, @namespace);
-                    continue;
-                }
+            }
 
-                // For each service type, register a concrete type
-                foreach (var serviceType in serviceTypes)
+            // Now register types
+            var serviceTypes = typesHashSet.Where(i => i.IsInterface || i.IsAbstract).ToList();
+            var concreteTypes = typesHashSet.Where(i => !i.IsInterface && !i.IsAbstract).ToList();
+
+            if (serviceTypes.Count == 0)
+            {
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found in any of the provided namespaces", methodNameForDebugLogging);
+                return;
+            }
+            if (concreteTypes.Count == 0)
+            {
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found in any of the provided namespaces", methodNameForDebugLogging);
+                return;
+            }
+
+            // Order concrete types by name, because when multiple implementations can be assigned from the interface or abstract clas, we'll take the first one
+            concreteTypes = concreteTypes.OrderBy(i => i.Name).ToList();
+
+            // For each service type, register a concrete type
+            foreach (var serviceType in serviceTypes)
+            {
+                foreach (var concreteType in concreteTypes)
                 {
-                    // Ensure an implementation can be assigned from the interface - take the first one that qualifies alphabetically
-                    foreach (var concreteType in concreteTypes.OrderBy(i => i.Name))
+                    if (!serviceType.IsAssignableFrom(concreteType))
                     {
-                        if (!serviceType.IsAssignableFrom(concreteType))
-                        {
-                            // Can't be assigned
-                            continue;
-                        }
-
-                        // Register the type mapping
-                        addMethod(serviceType, concreteType);
-
-                        _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, concreteType);
-                        
-                        break;
+                        // Can't be assigned
+                        continue;
                     }
+
+                    // Register the type mapping
+                    addMethod(serviceType, concreteType);
+
+                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped '{serviceType}' to '{concreteType}'", methodNameForDebugLogging, serviceType, concreteType);
+                        
+                    break;
                 }
             }
         }
@@ -201,7 +211,7 @@ namespace Imperative.AutoDI
             ArgumentNullException.ThrowIfNull(servicesTypesSelector);
             ArgumentNullException.ThrowIfNull(implementationTypesSelector);
             ArgumentNullException.ThrowIfNull(addMethod);
-            if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or white space", nameof(methodNameForDebugLogging));
+            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
 
             var serviceTypes = (servicesTypesSelector() ?? Enumerable.Empty<Type>()).ToList();
             var concreteTypes = (implementationTypesSelector() ?? Enumerable.Empty<Type>()).ToList();

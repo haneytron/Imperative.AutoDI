@@ -5,8 +5,6 @@ Install:
 
 Automatically add dependencies to your `IServiceCollection` by namespace or selector functions.
 
-Examples (note: classes must implement the relevant interface):
-
 Example usage in `Program.cs`:
 
 ```
@@ -21,12 +19,12 @@ builder.Host.ConfigureServices((context, services) =>
     // Configure Auto DI
     services.AddAutoDependencyInjection(config =>
     {
-        // Singletons
+        // Singletons - with wildcard that will map anythin in a namespace starting with "My.Namespace.Two" including namespaces like "My.Namespace.TwoTimes"
         config.AddSingletons("My.Namespace.One", "My.Namespace.Two*");
-        // Scoped
+        // Scopeds - basic namespace usage
         config.AddScopeds("OtherNamespace");
-        // Transient
-        config.AddTransients("Another.Namespace");
+        // Transients - with wildcard that will map anything in a namespace starting with "Another.Namespace."
+        config.AddTransients("Another.Namespace.*");
     });
 });
 
