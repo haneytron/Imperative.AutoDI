@@ -1,28 +1,49 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Imperative.AutoDI</PackageId>
-    <Version>1.1.0</Version>
+    <Version>2.0.0</Version>
     <Authors>David Haney</Authors>
     <Company>Imperative Bytes, LLC</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>dependency injection di auto autodi</PackageTags>
     <Summary>Automatically add dependencies to your IServiceCollection by namespace.</Summary>
-    <Description>Automatically add dependencies to your `IServiceCollection` by namespace. Matches on convention of classes where the class name ends with the interface name minus the leading `I`. Example: `InMemoryCacheManager` and `CacheManager` will match `ICacheManager`.</Description>
+    <Description>Automatically add dependencies to your `IServiceCollection` by namespace or selector functions.</Description>
   </PropertyGroup>
 
   <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <Copyright>Imperative Bytes, LLC</Copyright>
+    <PackageProjectUrl>https://github.com/haneytron/Imperative.AutoDI</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/haneytron/Imperative.AutoDI</RepositoryUrl>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

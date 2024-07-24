@@ -3,13 +3,9 @@ Install:
 - `PM> Install-Package Imperative.AutoDI`
 - `nuget install Imperative.AutoDI`
 
-Automatically add dependencies to your `IServiceCollection` by namespace. Matches on convention of classes where the class name ends with the interface name minus the leading `I`. Namespaces specified will include all child namespaces (any namespaces which start with the specified namespace string).
+Automatically add dependencies to your `IServiceCollection` by namespace or selector functions.
 
 Examples (note: classes must implement the relevant interface):
-
-- `InMemoryCacheManager` will match `ICacheManager`
-- `CacheManager` will match `ICacheManager`
-- `SendGridEmailHandler` will match `IEmailHandler`
 
 Example usage in `Program.cs`:
 
@@ -19,10 +15,20 @@ using Imperative.AutoDI;
 ...
 
 var builder = WebApplication.CreateBuilder(args);
-// Configure DI
-AutoDependencyInjection.ConfigureDependencies(builder.Services, Scope.Singleton, 
-    "MyApp.Data", 
-    "MyApp.Handlers");
+
+builder.Host.ConfigureServices((context, services) =>
+{
+    // Configure Auto DI
+    services.AddAutoDependencyInjection(config =>
+    {
+        // Singletons
+        config.AddSingletons("My.Namespace.One", "My.Namespace.Two");
+        // Scoped
+        config.AddScopeds("OtherNamespace");
+        // Transient
+        config.AddTransients("Another.Namespace");
+    });
+});
 
 ...
 
