@@ -16,10 +16,9 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple singleton services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="servicesTypesSelector">A function that selects the service types to register. These will usually be interfaces and abstract classes.</param>
-        /// <param name="implementationTypesSelector">A function that selects the implementation types to register. These will usually be classes and will implement the interfaces or abstract classes selected in <paramref name="servicesTypesSelector" /></param>
+        /// <param name="types">The service and implementation types to register. You can include interfaces abstract classes, and concrete types in any order.</param>
         /// <returns></returns>
-        IAutoDependencyConfigurator AddSingletons(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector);
+        IAutoDependencyConfigurator AddSingletons(params Type[] types);
         /// <summary>
         /// Adds multiple scoped services to the <see cref="IServiceCollection"/>.
         /// </summary>
@@ -29,10 +28,8 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple scoped services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="servicesTypesSelector">A function that selects the service types to register. These will usually be interfaces and abstract classes.</param>
-        /// <param name="implementationTypesSelector">A function that selects the implementation types to register. These will usually be classes and will implement the interfaces or abstract classes selected in <paramref name="servicesTypesSelector" /></param>
-        /// <returns></returns>
-        IAutoDependencyConfigurator AddScopeds(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector);
+        /// <param name="types">The service and implementation types to register. You can include interfaces abstract classes, and concrete types in any order.</param>        /// <returns></returns>
+        IAutoDependencyConfigurator AddScopeds(params Type[] types);
         /// <summary>
         /// Adds multiple transient services to the <see cref="IServiceCollection"/>.
         /// </summary>
@@ -42,9 +39,8 @@ namespace Imperative.AutoDI
         /// <summary>
         /// Adds multiple transient services to the <see cref="IServiceCollection"/>.
         /// </summary>
-        /// <param name="servicesTypesSelector">A function that selects the service types to register. These will usually be interfaces and abstract classes.</param>
-        /// <param name="implementationTypesSelector">A function that selects the implementation types to register. These will usually be classes and will implement the interfaces or abstract classes selected in <paramref name="servicesTypesSelector" /></param>
+        /// <param name="types">The service and implementation types to register. You can include interfaces abstract classes, and concrete types in any order.</param>
         /// <returns></returns>
-        IAutoDependencyConfigurator AddTransients(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector);
+        IAutoDependencyConfigurator AddTransients(params Type[] types);
     }
 }

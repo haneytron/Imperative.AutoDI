@@ -10,7 +10,9 @@ namespace Imperative.AutoDI
     {
         private readonly IServiceCollection _serviceCollection;
         private readonly ILogger<AutoDependencyConfigurator> _logger;
-        private readonly Dictionary<string, List<Type>> _typesByNamespace;
+        private readonly IReadOnlyDictionary<string, List<Type>> _typesByNamespace;
+        // Has to stay List to get BinarySearch
+        private readonly List<string> _alphabetizedKeys;
 
         public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null)
         {
@@ -30,7 +32,7 @@ namespace Imperative.AutoDI
 
             // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
-            _typesByNamespace = [];
+            var typesByNamespace = new Dictionary<string, List<Type>>();
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var typeCount = 0;
 
@@ -47,17 +49,17 @@ namespace Imperative.AutoDI
                             continue;
                         }
 
-                        // Skip generics
-                        // TODO: create support for generics
-                        if (type.IsGenericType || type.IsGenericTypeDefinition)
+                        // Only support constructed generic types (those whose type parameters are all defined)
+                        // See: https://stackoverflow.com/a/70111165/2420979
+                        if (type.IsGenericType && !type.IsConstructedGenericType)
                         {
                             continue;
                         }
 
-                        if (!_typesByNamespace.TryGetValue(type.Namespace, out var types))
+                        if (!typesByNamespace.TryGetValue(type.Namespace, out var types))
                         {
                             types = [];
-                            _typesByNamespace.Add(type.Namespace, types);
+                            typesByNamespace.Add(type.Namespace, types);
                         }
 
                         types.Add(type);
@@ -69,6 +71,12 @@ namespace Imperative.AutoDI
                     _logger.LogWarning("[AutoDI]: Init - error caught while caching types by namespace: {ex}", ex);
                 }
             }
+
+            // Store as readonly
+            _typesByNamespace = typesByNamespace;
+
+            // Store the keys ordered alphabetically so we can do BinarySearch for wildcards
+            _alphabetizedKeys = _typesByNamespace.Keys.OrderBy(i => i).ToList();
 
             timer.Stop();
             _logger.LogInformation("[AutoDI]: Init - cached types in {ellapsed}ms, total namespaces: {typesByNamespaceCount}, total types: {typeCount}", timer.ElapsedMilliseconds, _typesByNamespace.Count, typeCount);
@@ -84,12 +92,11 @@ namespace Imperative.AutoDI
             return this;
         }
 
-        public IAutoDependencyConfigurator AddSingletons(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector)
+        public IAutoDependencyConfigurator AddSingletons(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(servicesTypesSelector);
-            ArgumentNullException.ThrowIfNull(implementationTypesSelector);
+            ArgumentNullException.ThrowIfNull(types);
 
-            AddTypes(servicesTypesSelector, implementationTypesSelector, _serviceCollection.AddSingleton, nameof(AddSingletons));
+            AddTypes(types, _serviceCollection.AddSingleton, nameof(AddSingletons));
 
             return this;
         }
@@ -103,12 +110,11 @@ namespace Imperative.AutoDI
             return this;
         }
 
-        public IAutoDependencyConfigurator AddScopeds(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector)
+        public IAutoDependencyConfigurator AddScopeds(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(servicesTypesSelector);
-            ArgumentNullException.ThrowIfNull(implementationTypesSelector);
+            ArgumentNullException.ThrowIfNull(types);
 
-            AddTypes(servicesTypesSelector, implementationTypesSelector, _serviceCollection.AddScoped, nameof(AddScopeds));
+            AddTypes(types, _serviceCollection.AddScoped, nameof(AddScopeds));
 
             return this;
         }
@@ -122,12 +128,11 @@ namespace Imperative.AutoDI
             return this;
         }
 
-        public IAutoDependencyConfigurator AddTransients(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector)
+        public IAutoDependencyConfigurator AddTransients(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(servicesTypesSelector);
-            ArgumentNullException.ThrowIfNull(implementationTypesSelector);
+            ArgumentNullException.ThrowIfNull(types);
 
-            AddTypes(servicesTypesSelector, implementationTypesSelector, _serviceCollection.AddTransient, nameof(AddTransients));
+            AddTypes(types, _serviceCollection.AddTransient, nameof(AddTransients));
 
             return this;
         }
@@ -138,8 +143,7 @@ namespace Imperative.AutoDI
             ArgumentNullException.ThrowIfNull(addMethod);
             ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
 
-            // HashSet to remove dupes
-            HashSet<Type> typesHashSet = new HashSet<Type>();
+            var types = new List<Type>(100 * (namespaces.Length + 1));
 
             // Aggregate all types from all namespaces
             foreach (var @namespace in namespaces)
@@ -148,10 +152,34 @@ namespace Imperative.AutoDI
                 // Handle wildcard namespaces which map all child namespaces
                 if (@namespace.EndsWith('*'))
                 {
-                    typesInNamespace = _typesByNamespace.Where(i => i.Key.StartsWith(@namespace.TrimEnd('*'))).SelectMany(i => i.Value).ToList();
+                    typesInNamespace = new List<Type>(100);
+
+                    var nameSpaceRoot = @namespace.TrimEnd('*');
+                    // Find where this root would be in the ordered list
+                    var index = _alphabetizedKeys.BinarySearch(nameSpaceRoot);
+                    if (index < 0)
+                    {
+                        // This is the index of next larger (in the alphabet) namespace in the list, because the exact match wasn't found
+                        index = ~index;
+                    }
+
+                    // iterate the ordered keys until our wildcard no longer matches
+                    while (index < _alphabetizedKeys.Count)
+                    {
+                        var currentKey = _alphabetizedKeys[index];
+                        // If we have moved past the root in terms of alphabetized namespaces, we're done
+                        if (!currentKey.StartsWith(nameSpaceRoot))
+                        {
+                            break;
+                        }
+
+                        typesInNamespace.AddRange(_typesByNamespace[currentKey]);
+                        index++;
+                    }
+
                     if (typesInNamespace.Count == 0)
                     {
-                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in wildcard namespace: {namespace}", methodNameForDebugLogging, @namespace);
                         continue;
                     }
                 }
@@ -161,15 +189,13 @@ namespace Imperative.AutoDI
                     continue;
                 }
 
-                foreach (var typeInNamespace in typesInNamespace)
-                {
-                    typesHashSet.Add(typeInNamespace);
-                }
+                // Add to types
+                types.AddRange(typesInNamespace);
             }
 
             // Now register types
-            var serviceTypes = typesHashSet.Where(i => i.IsInterface || i.IsAbstract).ToList();
-            var concreteTypes = typesHashSet.Where(i => !i.IsInterface && !i.IsAbstract).ToList();
+            var serviceTypes = types.Where(i => i.IsInterface || i.IsAbstract).ToList();
+            var concreteTypes = types.Where(i => !i.IsInterface && !i.IsAbstract).ToList();
 
             if (serviceTypes.Count == 0)
             {
@@ -206,43 +232,39 @@ namespace Imperative.AutoDI
             }
         }
 
-        private void AddTypes(Func<IEnumerable<Type>> servicesTypesSelector, Func<IEnumerable<Type>> implementationTypesSelector, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
+        private void AddTypes(Type[] types, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
         {
-            ArgumentNullException.ThrowIfNull(servicesTypesSelector);
-            ArgumentNullException.ThrowIfNull(implementationTypesSelector);
+            ArgumentNullException.ThrowIfNull(types);
             ArgumentNullException.ThrowIfNull(addMethod);
             ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
 
-            var serviceTypes = (servicesTypesSelector() ?? Enumerable.Empty<Type>()).ToList();
-            var concreteTypes = (implementationTypesSelector() ?? Enumerable.Empty<Type>()).ToList();
+            if (types.Length == 0)
+            {
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - {types} collection has 0 elements", methodNameForDebugLogging, nameof(types));
+                return;
+            }
 
-            if (serviceTypes.Count == 0)
-            {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found for {servicesTypesSelector}", methodNameForDebugLogging, nameof(servicesTypesSelector));
-                return;
-            }
-            if (concreteTypes.Count == 0)
-            {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found for {implementationTypesSelector}", methodNameForDebugLogging, nameof(implementationTypesSelector));
-                return;
-            }
+            // Get the service and implementation types
+            var serviceTypes = types.Where(i => i.IsInterface || i.IsAbstract);
+            // Alphabetize the implementation types, we'll take the first one alphabetically that can be assigned from a given service type
+            var implementationTypes = types.Where(i => !i.IsInterface && !i.IsAbstract).OrderBy(i => i.Name);
 
             // For each service type, register a concrete type
             foreach (var serviceType in serviceTypes)
             {
                 // Ensure an implementation can be assigned from the interface - take the first one that qualifies alphabetically
-                foreach (var concreteType in concreteTypes.OrderBy(i => i.Name))
+                foreach (var implementationType in implementationTypes)
                 {
-                    if (!serviceType.IsAssignableFrom(concreteType))
+                    if (!serviceType.IsAssignableFrom(implementationType))
                     {
                         // Can't be assigned
                         continue;
                     }
 
                     // Register the type mapping
-                    addMethod(serviceType, concreteType);
+                    addMethod(serviceType, implementationType);
 
-                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, concreteType);
+                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, implementationType);
 
                     break;
                 }
