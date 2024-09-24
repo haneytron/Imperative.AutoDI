@@ -6,6 +6,25 @@ using System.Reflection;
 
 namespace Imperative.AutoDI
 {
+    file static class StringExtensions
+    {
+        public static bool StartsWithAny(this string value, params string[] matches)
+        {
+            if (value == null) return false;
+            if (matches == null || matches.Length == 0) return false;
+            
+            foreach (var match in matches)
+            {
+                if (value.StartsWith(match))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
     internal class AutoDependencyConfigurator : IAutoDependencyConfigurator
     {
         private readonly IServiceCollection _serviceCollection;
@@ -13,8 +32,10 @@ namespace Imperative.AutoDI
         private readonly IReadOnlyDictionary<string, List<Type>> _typesByNamespace;
         // Has to stay List to get BinarySearch
         private readonly List<string> _alphabetizedKeys;
+        // The framework assembly name prefixes to typically exclude
+        private readonly string[] _frameworkAssemblyNamePrefixes = ["Microsoft.", "System."];
 
-        public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null)
+        public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null, bool includeFrameworkAssemblies = false)
         {
             ArgumentNullException.ThrowIfNull(serviceCollection);
 
@@ -30,10 +51,41 @@ namespace Imperative.AutoDI
                 _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
             }
 
+            _logger.LogInformation("[AutoDI]: Init - {IncludingOrSkipping} framework assemblies", includeFrameworkAssemblies ? "including" : "skipping");
+
             // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
             var typesByNamespace = new Dictionary<string, List<Type>>();
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            // Load the current domain assemblies (which don't include referenced project assemblies) and the referenced assemblies (which need to be manually loaded)
+            var currentDomainAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var referencedAssemblyNames = Assembly.GetEntryAssembly().GetReferencedAssemblies();
+            // The loaded referenced assemblies
+            var referencedAssemblies = new List<Assembly>(referencedAssemblyNames.Length);
+            foreach (var referencedAssemblyName in referencedAssemblyNames)
+            {
+                if (!includeFrameworkAssemblies && referencedAssemblyName.FullName.StartsWithAny(_frameworkAssemblyNamePrefixes))
+                {
+                    // Skip it
+                    continue;
+                }
+
+                referencedAssemblies.Add(Assembly.Load(referencedAssemblyName));
+            }
+            
+            // Now marry the two sets of assemblies
+            var assemblies = new HashSet<Assembly>();
+            foreach (var assembly in currentDomainAssemblies.Union(referencedAssemblies))
+            {
+                if (!includeFrameworkAssemblies && assembly.FullName.StartsWithAny(_frameworkAssemblyNamePrefixes))
+                {
+                    // Skip it
+                    continue;
+                }
+
+                assemblies.Add(assembly);
+            }
+
             var typeCount = 0;
 
             foreach (var assembly in assemblies)

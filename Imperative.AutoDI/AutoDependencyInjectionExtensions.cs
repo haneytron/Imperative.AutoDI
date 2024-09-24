@@ -14,11 +14,12 @@ namespace Imperative.AutoDI
         /// <param name="serviceCollection">The service collection.</param>
         /// <param name="config">The configuration method.</param>
         /// <param name="loggerFactory">Optional: the logger factory to use for logging. If none is provided, nothing will be logged. Useful for debugging.</param>
-        public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config, ILoggerFactory loggerFactory = null)
+        /// <param name="includeFrameworkAssemblies">Whether or not to include framework assemblies. The default is to ignore them (because we should not manually wire them into DI). These tend to start with "System." or "Microsoft." etc.</param>
+        public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config, ILoggerFactory loggerFactory = null, bool includeFrameworkAssemblies = false)
         {
             ArgumentNullException.ThrowIfNull(config);
 
-            var autoDependencyConfigurator = new AutoDependencyConfigurator(serviceCollection, loggerFactory);
+            var autoDependencyConfigurator = new AutoDependencyConfigurator(serviceCollection, loggerFactory, includeFrameworkAssemblies);
 
             config(autoDependencyConfigurator);
 
