@@ -32,7 +32,7 @@ namespace Imperative.AutoDI
         private readonly IReadOnlyDictionary<string, List<Type>> _typesByNamespace;
         // Has to stay List to get BinarySearch
         private readonly List<string> _alphabetizedKeys;
-        // The framework assembly name prefixes to typically exclude
+        // The most common framework assembly name prefixes to typically exclude
         private readonly string[] _frameworkAssemblyNamePrefixes = ["Microsoft.", "System."];
 
         public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null, bool includeFrameworkAssemblies = false)
@@ -55,13 +55,26 @@ namespace Imperative.AutoDI
 
             // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
-            var typesByNamespace = new Dictionary<string, List<Type>>();
+            var typesByNamespace = new Dictionary<string, List<Type>>(500);
 
-            // Load the current domain assemblies (which don't include referenced project assemblies) and the referenced assemblies (which need to be manually loaded)
+            // The total set of assemblies
+            var assemblies = new HashSet<Assembly>(50);
+
+            // Collect the current domain assemblies (which don't include referenced project assemblies)
             var currentDomainAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var currentDomainAssembly in currentDomainAssemblies)
+            {
+                if (!includeFrameworkAssemblies && currentDomainAssembly.FullName.StartsWithAny(_frameworkAssemblyNamePrefixes))
+                {
+                    // Skip it
+                    continue;
+                }
+
+                assemblies.Add(currentDomainAssembly);
+            }
+
+            // Now load the referenced assemblies (which need to be manually loaded)
             var referencedAssemblyNames = Assembly.GetEntryAssembly().GetReferencedAssemblies();
-            // The loaded referenced assemblies
-            var referencedAssemblies = new List<Assembly>(referencedAssemblyNames.Length);
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
                 if (!includeFrameworkAssemblies && referencedAssemblyName.FullName.StartsWithAny(_frameworkAssemblyNamePrefixes))
@@ -70,20 +83,7 @@ namespace Imperative.AutoDI
                     continue;
                 }
 
-                referencedAssemblies.Add(Assembly.Load(referencedAssemblyName));
-            }
-            
-            // Now marry the two sets of assemblies
-            var assemblies = new HashSet<Assembly>();
-            foreach (var assembly in currentDomainAssemblies.Union(referencedAssemblies))
-            {
-                if (!includeFrameworkAssemblies && assembly.FullName.StartsWithAny(_frameworkAssemblyNamePrefixes))
-                {
-                    // Skip it
-                    continue;
-                }
-
-                assemblies.Add(assembly);
+                assemblies.Add(Assembly.Load(referencedAssemblyName));
             }
 
             var typeCount = 0;
@@ -110,7 +110,7 @@ namespace Imperative.AutoDI
 
                         if (!typesByNamespace.TryGetValue(type.Namespace, out var types))
                         {
-                            types = [];
+                            types = new List<Type>(20);
                             typesByNamespace.Add(type.Namespace, types);
                         }
 
@@ -195,16 +195,16 @@ namespace Imperative.AutoDI
             ArgumentNullException.ThrowIfNull(addMethod);
             ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
 
-            var types = new List<Type>(100 * (namespaces.Length + 1));
+            var types = new List<Type>(20);
 
             // Aggregate all types from all namespaces
             foreach (var @namespace in namespaces)
             {
                 List<Type> typesInNamespace;
-                // Handle wildcard namespaces which map all child namespaces
+                // Handle wildcard namespaces which inclusively map all child namespaces
                 if (@namespace.EndsWith('*'))
                 {
-                    typesInNamespace = new List<Type>(100);
+                    typesInNamespace = new List<Type>(20);
 
                     var nameSpaceRoot = @namespace.TrimEnd('*');
                     // Find where this root would be in the ordered list
@@ -246,6 +246,22 @@ namespace Imperative.AutoDI
             }
 
             // Now register types
+            AddTypes(types.ToArray(), addMethod, methodNameForDebugLogging);
+        }
+
+        private void AddTypes(Type[] types, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
+        {
+            ArgumentNullException.ThrowIfNull(types);
+            ArgumentNullException.ThrowIfNull(addMethod);
+            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
+
+            if (types.Length == 0)
+            {
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - parameter '{types}' has 0 elements", methodNameForDebugLogging, nameof(types));
+                return;
+            }
+
+            // Get the service and concrete types
             var serviceTypes = types.Where(i => i.IsInterface || i.IsAbstract).ToList();
             var concreteTypes = types.Where(i => !i.IsInterface && !i.IsAbstract).ToList();
 
@@ -278,45 +294,6 @@ namespace Imperative.AutoDI
                     addMethod(serviceType, concreteType);
 
                     _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped '{serviceType}' to '{concreteType}'", methodNameForDebugLogging, serviceType, concreteType);
-                        
-                    break;
-                }
-            }
-        }
-
-        private void AddTypes(Type[] types, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
-        {
-            ArgumentNullException.ThrowIfNull(types);
-            ArgumentNullException.ThrowIfNull(addMethod);
-            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
-
-            if (types.Length == 0)
-            {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - {types} collection has 0 elements", methodNameForDebugLogging, nameof(types));
-                return;
-            }
-
-            // Get the service and implementation types
-            var serviceTypes = types.Where(i => i.IsInterface || i.IsAbstract);
-            // Alphabetize the implementation types, we'll take the first one alphabetically that can be assigned from a given service type
-            var implementationTypes = types.Where(i => !i.IsInterface && !i.IsAbstract).OrderBy(i => i.Name);
-
-            // For each service type, register a concrete type
-            foreach (var serviceType in serviceTypes)
-            {
-                // Ensure an implementation can be assigned from the interface - take the first one that qualifies alphabetically
-                foreach (var implementationType in implementationTypes)
-                {
-                    if (!serviceType.IsAssignableFrom(implementationType))
-                    {
-                        // Can't be assigned
-                        continue;
-                    }
-
-                    // Register the type mapping
-                    addMethod(serviceType, implementationType);
-
-                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped {serviceType} to {concreteType}", methodNameForDebugLogging, serviceType, implementationType);
 
                     break;
                 }
