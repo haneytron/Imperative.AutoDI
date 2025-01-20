@@ -1,20 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Imperative.AutoDI</PackageId>
-    <Version>2.4.2</Version>
+    <Version>2.5.0</Version>
     <Authors>David Haney</Authors>
     <Company>Imperative Bytes, LLC</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>dependency injection di auto autodi</PackageTags>
     <Summary>Automatically add dependencies to your IServiceCollection by namespace.</Summary>
-    <Description>Automatically add dependencies to your `IServiceCollection` by namespace or selector functions.</Description>
+    <Description>Automatically add dependencies to your `IServiceCollection` by namespaces (with some wildcard support) or as arrays of `Type`s</Description>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -44,10 +43,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.1" />
   </ItemGroup>
 
 </Project>

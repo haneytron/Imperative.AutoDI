@@ -1,12 +1,15 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 
 namespace Imperative.AutoDI
 {
-    file static class StringExtensions
+    internal static class StringExtensions
     {
         public static bool StartsWithAny(this string value, params string[] matches)
         {
@@ -33,13 +36,11 @@ namespace Imperative.AutoDI
         // Has to stay List to get BinarySearch
         private readonly List<string> _alphabetizedKeys;
         // The most common framework assembly name prefixes to typically exclude
-        private readonly string[] _frameworkAssemblyNamePrefixes = ["Microsoft.", "System."];
+        private readonly string[] _frameworkAssemblyNamePrefixes = new[] { "Microsoft.", "System." };
 
         public AutoDependencyConfigurator(IServiceCollection serviceCollection, ILoggerFactory loggerFactory = null, bool includeFrameworkAssemblies = false)
         {
-            ArgumentNullException.ThrowIfNull(serviceCollection);
-
-            _serviceCollection = serviceCollection;
+            _serviceCollection = serviceCollection ?? throw new ArgumentNullException(nameof(serviceCollection));
 
             // Set up logging
             if (loggerFactory == null)
@@ -137,7 +138,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddSingletons(params string[] namespaces)
         {
-            ArgumentNullException.ThrowIfNull(namespaces);
+            if (namespaces == null) throw new ArgumentNullException(nameof(namespaces));
+            if (namespaces.Length == 0) throw new ArgumentException("must provide at least one namespace", nameof(namespaces));
 
             AddTypes(namespaces, _serviceCollection.AddSingleton, nameof(AddSingletons));
 
@@ -146,7 +148,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddSingletons(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(types);
+            if (types == null) throw new ArgumentNullException(nameof(types));
+            if (types.Length == 0) throw new ArgumentException("must provide at least one type", nameof(types));
 
             AddTypes(types, _serviceCollection.AddSingleton, nameof(AddSingletons));
 
@@ -155,7 +158,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddScopeds(params string[] namespaces)
         {
-            ArgumentNullException.ThrowIfNull(namespaces);
+            if (namespaces == null) throw new ArgumentNullException(nameof(namespaces));
+            if (namespaces.Length == 0) throw new ArgumentException("must provide at least one namespace", nameof(namespaces));
 
             AddTypes(namespaces, _serviceCollection.AddScoped, nameof(AddScopeds));
 
@@ -164,7 +168,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddScopeds(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(types);
+            if (types == null) throw new ArgumentNullException(nameof(types));
+            if (types.Length == 0) throw new ArgumentException("must provide at least one type", nameof(types));
 
             AddTypes(types, _serviceCollection.AddScoped, nameof(AddScopeds));
 
@@ -173,7 +178,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddTransients(params string[] namespaces)
         {
-            ArgumentNullException.ThrowIfNull(namespaces);
+            if (namespaces == null) throw new ArgumentNullException(nameof(namespaces));
+            if (namespaces.Length == 0) throw new ArgumentException("must provide at least one namespace", nameof(namespaces));
 
             AddTypes(namespaces, _serviceCollection.AddTransient, nameof(AddTransients));
 
@@ -182,7 +188,8 @@ namespace Imperative.AutoDI
 
         public IAutoDependencyConfigurator AddTransients(params Type[] types)
         {
-            ArgumentNullException.ThrowIfNull(types);
+            if (types == null) throw new ArgumentNullException(nameof(types));
+            if (types.Length == 0) throw new ArgumentException("must provide at least one type", nameof(types));
 
             AddTypes(types, _serviceCollection.AddTransient, nameof(AddTransients));
 
@@ -191,9 +198,10 @@ namespace Imperative.AutoDI
 
         private void AddTypes(string[] namespaces, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
         {
-            ArgumentNullException.ThrowIfNull(namespaces);
-            ArgumentNullException.ThrowIfNull(addMethod);
-            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
+            if (namespaces == null) throw new ArgumentNullException(nameof(namespaces));
+            if (namespaces.Length == 0) throw new ArgumentException("must provide at least one namespace", nameof(namespaces));
+            if (addMethod == null) throw new ArgumentNullException(nameof(addMethod));
+            if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or whitespace", nameof(methodNameForDebugLogging));
 
             var types = new List<Type>(20);
 
@@ -251,9 +259,10 @@ namespace Imperative.AutoDI
 
         private void AddTypes(Type[] types, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
         {
-            ArgumentNullException.ThrowIfNull(types);
-            ArgumentNullException.ThrowIfNull(addMethod);
-            ArgumentException.ThrowIfNullOrWhiteSpace(methodNameForDebugLogging);
+            if (types == null) throw new ArgumentNullException(nameof(types));
+            if (types.Length == 0) throw new ArgumentException("must provide at least one type", nameof(types));
+            if (addMethod == null) throw new ArgumentNullException(nameof(addMethod));
+            if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or whitespace", nameof(methodNameForDebugLogging));
 
             if (types.Length == 0)
             {

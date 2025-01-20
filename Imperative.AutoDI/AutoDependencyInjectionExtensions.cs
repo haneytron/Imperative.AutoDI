@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace Imperative.AutoDI
 {
@@ -17,7 +18,7 @@ namespace Imperative.AutoDI
         /// <param name="includeFrameworkAssemblies">Whether or not to include framework assemblies. The default is to ignore them (because we should not manually wire them into DI). These tend to start with "System." or "Microsoft." etc.</param>
         public static IServiceCollection AddAutoDependencyInjection(this IServiceCollection serviceCollection, Action<IAutoDependencyConfigurator> config, ILoggerFactory loggerFactory = null, bool includeFrameworkAssemblies = false)
         {
-            ArgumentNullException.ThrowIfNull(config);
+            if (config == null) throw new ArgumentNullException(nameof(config));
 
             var autoDependencyConfigurator = new AutoDependencyConfigurator(serviceCollection, loggerFactory, includeFrameworkAssemblies);
 
