@@ -3,7 +3,7 @@ Install:
 - `PM> Install-Package Imperative.AutoDI`
 - `nuget install Imperative.AutoDI`
 
-Automatically add dependencies to your `IServiceCollection` by namespaces (with some wildcard support) or as arrays of Types.
+Automatically add dependencies to your `IServiceCollection` by namespaces (with some wildcard support) or as arrays of `Type`s.
 
 Example usage in `Program.cs`:
 

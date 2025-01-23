@@ -52,7 +52,7 @@ namespace Imperative.AutoDI
                 _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
             }
 
-            _logger.LogInformation("[AutoDI]: Init - {IncludingOrSkipping} framework assemblies", includeFrameworkAssemblies ? "including" : "skipping");
+            _logger.LogInformation("[AutoDI]: Init Started | {IncludingOrSkipping} framework assemblies", includeFrameworkAssemblies ? "including" : "skipping");
 
             // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
@@ -121,7 +121,7 @@ namespace Imperative.AutoDI
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    _logger.LogWarning("[AutoDI]: Init - error caught while caching types by namespace: {ex}", ex);
+                    _logger.LogWarning("[AutoDI]: Init Error | error caught while caching types by namespace: {ex}", ex);
                 }
             }
 
@@ -132,7 +132,10 @@ namespace Imperative.AutoDI
             _alphabetizedKeys = _typesByNamespace.Keys.OrderBy(i => i).ToList();
 
             timer.Stop();
-            _logger.LogInformation("[AutoDI]: Init - cached types in {ellapsed}ms, total namespaces: {typesByNamespaceCount}, total types: {typeCount}", timer.ElapsedMilliseconds, _typesByNamespace.Count, typeCount);
+            _logger.LogInformation("[AutoDI]: Init Completed | cached all types in {ellapsed} ms", timer.ElapsedMilliseconds);
+            _logger.LogInformation("[AutoDI]: Init Completed |   total assemblies: {assembliesCount}", assemblies.Count);
+            _logger.LogInformation("[AutoDI]: Init Completed |   total namespaces: {typesByNamespaceCount}", _typesByNamespace.Count);
+            _logger.LogInformation("[AutoDI]: Init Completed |   total types: {typeCount}", typeCount);
             Console.WriteLine();
         }
 
@@ -239,13 +242,13 @@ namespace Imperative.AutoDI
 
                     if (typesInNamespace.Count == 0)
                     {
-                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in wildcard namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                        _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} | no types found in wildcard namespace: {namespace}", methodNameForDebugLogging, @namespace);
                         continue;
                     }
                 }
                 else if (!_typesByNamespace.TryGetValue(@namespace, out typesInNamespace))
                 {
-                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no types found in namespace: {namespace}", methodNameForDebugLogging, @namespace);
+                    _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} | no types found in namespace: {namespace}", methodNameForDebugLogging, @namespace);
                     continue;
                 }
 
@@ -266,7 +269,7 @@ namespace Imperative.AutoDI
 
             if (types.Length == 0)
             {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - parameter '{types}' has 0 elements", methodNameForDebugLogging, nameof(types));
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} | parameter '{types}' has 0 elements", methodNameForDebugLogging, nameof(types));
                 return;
             }
 
@@ -276,12 +279,12 @@ namespace Imperative.AutoDI
 
             if (serviceTypes.Count == 0)
             {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no service types found in any of the provided namespaces", methodNameForDebugLogging);
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} | no service types found in any of the provided namespaces", methodNameForDebugLogging);
                 return;
             }
             if (concreteTypes.Count == 0)
             {
-                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} - no concrete types found in any of the provided namespaces", methodNameForDebugLogging);
+                _logger.LogWarning("[AutoDI]: {methodNameForDebugLogging} | no concrete types found in any of the provided namespaces", methodNameForDebugLogging);
                 return;
             }
 
@@ -302,7 +305,7 @@ namespace Imperative.AutoDI
                     // Register the type mapping
                     addMethod(serviceType, concreteType);
 
-                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} - mapped '{serviceType}' to '{concreteType}'", methodNameForDebugLogging, serviceType, concreteType);
+                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} | mapped '{serviceType}' to '{concreteType}'", methodNameForDebugLogging, serviceType, concreteType);
 
                     break;
                 }
