@@ -134,11 +134,10 @@ namespace Imperative.AutoDI
 
             timer.Stop();
             _logger.LogInformation(@"[AutoDI]: Init Completed |
-  cached all types in     {ellapsed} ms
+  built type cache in:    {ellapsed} ms
   total assemblies:       {assembliesCount}
   total namespaces:       {typesByNamespaceCount}
   total types:            {typeCount}", timer.ElapsedMilliseconds, assemblies.Count, _typesByNamespace.Count, typeCount);
-            Console.WriteLine();
         }
 
         public IAutoDependencyConfigurator AddSingletons(params string[] namespaces)
