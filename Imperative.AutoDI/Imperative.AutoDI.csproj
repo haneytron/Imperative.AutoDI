@@ -19,7 +19,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- Done via GitHub Action on commit, if set to true then then dotnet nuget pack implicit build will fail, see: https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-pack#description -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <Copyright>Imperative Bytes, LLC</Copyright>
     <PackageProjectUrl>https://github.com/haneytron/Imperative.AutoDI</PackageProjectUrl>

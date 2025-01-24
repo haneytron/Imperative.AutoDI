@@ -1,0 +1,50 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Package and Publish to NuGet
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# https://docs.github.com/en/actions/learn-github-actions/expressions
+# https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+concurrency:
+  # github.workflow: name of the workflow
+  # github.event.pull_request.number || github.ref: pull request number or branch name if not a pull request
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Cancel in-progress runs when a new workflow with the same group name is triggered
+  cancel-in-progress: true
+
+env:
+  PROJECT_FILE_PATH: 'Imperative.AutoDI/Imperative.AutoDI.csproj'
+  PACKAGE_LOCK_FILE_PATH: 'Imperative.AutoDI/packages.lock.json'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # This is required for actions/checkout
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core (w/ NuGet cache)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+          # caches the NuGet dependencies
+          cache: true
+          cache-dependency-path: ${{ env.PACKAGE_LOCK_FILE_PATH }}
+
+      - name: .NET Restore (--locked-mode)
+        run: dotnet restore --locked-mode
+
+      - name: .NET Pack (--no-restore)
+        run: dotnet pack ${{ env.PROJECT_FILE_PATH }} -c Release -o ${{ env.DOTNET_ROOT }}/mypackage -p:SourceRevisionId=${{ github.sha }} --no-restore
+
+      - name: Publish to NuGet
+        run: dotnet nuget push ${{ env.DOTNET_ROOT }}/mypackage/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
