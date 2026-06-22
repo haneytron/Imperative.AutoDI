@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read # Required for actions/checkout
+      id-token: write # Required for NuGet/login
 
     steps:
       - name: Checkout Code
@@ -35,5 +36,11 @@ jobs:
       - name: .NET Pack (--no-restore)
         run: dotnet pack ${{ env.PROJECT_FILE_PATH }} -c Release -o ${{ env.DOTNET_ROOT }}/mypackage -p:SourceRevisionId=${{ github.sha }} --no-restore
 
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1.2.0
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet
-        run: dotnet nuget push ${{ env.DOTNET_ROOT }}/mypackage/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push ${{ env.DOTNET_ROOT }}/mypackage/*.nupkg --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
