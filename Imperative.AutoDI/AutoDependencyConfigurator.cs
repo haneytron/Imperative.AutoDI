@@ -52,8 +52,7 @@ namespace Imperative.AutoDI
                 _logger = loggerFactory.CreateLogger<AutoDependencyConfigurator>();
             }
 
-            _logger.LogInformation(@"[AutoDI]: Init Started |
-  {IncludingOrSkipping} framework assemblies", includeFrameworkAssemblies ? "including" : "skipping");
+            _logger.LogInformation("[AutoDI]: Init Started |\n  including framework assemblies: {includeFrameworkAssemblies}", includeFrameworkAssemblies.ToString().ToLowerInvariant());
 
             // Get all types and store them by namespace for "fast" access
             var timer = Stopwatch.StartNew();
@@ -122,7 +121,7 @@ namespace Imperative.AutoDI
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    _logger.LogWarning("[AutoDI]: Init Error |\n  error caught while caching types by namespace: {ex}", ex);
+                    _logger.LogWarning("[AutoDI]: Init Error |\n  error occurred while caching types by namespace: {ex}", ex);
                 }
             }
 
@@ -134,10 +133,10 @@ namespace Imperative.AutoDI
 
             timer.Stop();
             _logger.LogInformation(@"[AutoDI]: Init Completed |
-  built type cache in:    {ellapsed} ms
-  total assemblies:       {assembliesCount}
-  total namespaces:       {typesByNamespaceCount}
-  total types:            {typeCount}", timer.ElapsedMilliseconds, assemblies.Count, _typesByNamespace.Count, typeCount);
+  Built type cache in:    {ellapsed} ms
+  Total assemblies:       {assembliesCount}
+  Total namespaces:       {typesByNamespaceCount}
+  Total types:            {typeCount}", timer.ElapsedMilliseconds, assemblies.Count, _typesByNamespace.Count, typeCount);
         }
 
         public IAutoDependencyConfigurator AddSingletons(params string[] namespaces)
@@ -292,6 +291,8 @@ namespace Imperative.AutoDI
             // Order concrete types by name, because when multiple implementations can be assigned from the interface or abstract clas, we'll take the first one
             concreteTypes = concreteTypes.OrderBy(i => i.Name).ToList();
 
+            _logger.LogInformation("[AutoDI]: Mapping ({methodNameForDebugLogging}) |\n", methodNameForDebugLogging);
+
             // For each service type, register a concrete type
             foreach (var serviceType in serviceTypes)
             {
@@ -306,7 +307,7 @@ namespace Imperative.AutoDI
                     // Register the type mapping
                     addMethod(serviceType, concreteType);
 
-                    _logger.LogDebug("[AutoDI]: {methodNameForDebugLogging} |\n  mapped '{serviceType}' to '{concreteType}'", methodNameForDebugLogging, serviceType, concreteType);
+                    _logger.LogInformation("  mapped '{serviceType}' to '{concreteType}'\n", methodNameForDebugLogging, serviceType, concreteType);
 
                     break;
                 }
