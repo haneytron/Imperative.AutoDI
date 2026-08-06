@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace Imperative.AutoDI
 {
@@ -133,10 +134,10 @@ namespace Imperative.AutoDI
 
             timer.Stop();
             _logger.LogInformation(@"[AutoDI]: Init Completed |
-  Built type cache in:    {ellapsed} ms
-  Total assemblies:       {assembliesCount}
-  Total namespaces:       {typesByNamespaceCount}
-  Total types:            {typeCount}", timer.ElapsedMilliseconds, assemblies.Count, _typesByNamespace.Count, typeCount);
+  built type cache in:    {ellapsed} ms
+  total assemblies:       {assembliesCount}
+  total namespaces:       {typesByNamespaceCount}
+  total types:            {typeCount}", timer.ElapsedMilliseconds, assemblies.Count, _typesByNamespace.Count, typeCount);
         }
 
         public IAutoDependencyConfigurator AddSingletons(params string[] namespaces)
@@ -263,7 +264,7 @@ namespace Imperative.AutoDI
         private void AddTypes(Type[] types, Func<Type, Type, IServiceCollection> addMethod, string methodNameForDebugLogging)
         {
             if (types == null) throw new ArgumentNullException(nameof(types));
-            if (types.Length == 0) throw new ArgumentException("must provide at least one type", nameof(types));
+            if (types.Length == 0) throw new InvalidOperationException($"{nameof(types)} collection must contain at least one element");
             if (addMethod == null) throw new ArgumentNullException(nameof(addMethod));
             if (string.IsNullOrWhiteSpace(methodNameForDebugLogging)) throw new ArgumentException("cannot be null, empty, or whitespace", nameof(methodNameForDebugLogging));
 
@@ -291,7 +292,7 @@ namespace Imperative.AutoDI
             // Order concrete types by name, because when multiple implementations can be assigned from the interface or abstract clas, we'll take the first one
             concreteTypes = concreteTypes.OrderBy(i => i.Name).ToList();
 
-            _logger.LogInformation("[AutoDI]: Mapping ({methodNameForDebugLogging}) |\n", methodNameForDebugLogging);
+            var sb = new StringBuilder($"[AutoDI]: Mapping ({methodNameForDebugLogging}) |").AppendLine();
 
             // For each service type, register a concrete type
             foreach (var serviceType in serviceTypes)
@@ -307,11 +308,13 @@ namespace Imperative.AutoDI
                     // Register the type mapping
                     addMethod(serviceType, concreteType);
 
-                    _logger.LogInformation("  mapped '{serviceType}' to '{concreteType}'\n", methodNameForDebugLogging, serviceType, concreteType);
+                    sb.AppendLine($"  mapped '{serviceType}' to '{concreteType}'");
 
                     break;
                 }
             }
+
+            _logger.LogInformation(sb.ToString());
         }
     }
 }
