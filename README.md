@@ -1,3 +1,7 @@
+[![Package and Publish to NuGet](https://github.com/haneytron/Imperative.AutoDI/actions/workflows/commit-package-publish.yml/badge.svg)](https://github.com/haneytron/Imperative.AutoDI/actions/workflows/commit-package-publish.yml)
+
+---
+
 Install:
 
 - `PM> Install-Package Imperative.AutoDI`
