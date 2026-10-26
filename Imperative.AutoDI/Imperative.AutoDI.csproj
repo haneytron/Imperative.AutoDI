@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <PackageId>Imperative.AutoDI</PackageId>
-    <Version>2.5.11</Version>
+    <Version>2.5.12</Version>
     <Authors>David Haney</Authors>
     <Company>Imperative Bytes, LLC</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -46,9 +46,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
   </ItemGroup>
 
 </Project>
